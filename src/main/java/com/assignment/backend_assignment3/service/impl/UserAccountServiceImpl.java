@@ -9,8 +9,11 @@ import com.assignment.backend_assignment3.service.mapstruct.UserAccountMapper;
 import com.assignment.backend_assignment3.utils.JwtUtils;
 import com.assignment.backend_assignment3.utils.PasswordUtils;
 import lombok.RequiredArgsConstructor;
+import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 @Service
 public class UserAccountServiceImpl implements UserAccountService {
@@ -47,6 +50,7 @@ public class UserAccountServiceImpl implements UserAccountService {
                 UserAccount newUserAccount = mapper.toEntity(userAccount);
 
                 newUserAccount.setPassword(hashedPassword);
+                newUserAccount.setCreatedAt(LocalDateTime.now());
                 UserAccount savedUserAccount = repository.save(newUserAccount);
 
                 apiResponseDto.setStatusCode("SUCCESS");
