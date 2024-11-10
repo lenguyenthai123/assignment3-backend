@@ -8,7 +8,10 @@ import com.assignment.backend_assignment3.repository.UserAccountRepository;
 import com.assignment.backend_assignment3.service.UserAccountService;
 import com.assignment.backend_assignment3.service.mapstruct.UserAccountMapper;
 import com.assignment.backend_assignment3.utils.PasswordUtils;
+import com.assignment.backend_assignment3.utils.UserContext;
 import io.micrometer.common.util.StringUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +19,6 @@ import java.time.LocalDateTime;
 
 @Service
 public class UserAccountServiceImpl implements UserAccountService {
-
 
     @Autowired
     private UserAccountRepository repository;
@@ -27,7 +29,11 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private JwtTokenProvider tokenProvider;
+
     @Override
+    @Transactional
     public ApiResponseDto register(UserAccountDto userAccount) {
 
         ApiResponseDto apiResponseDto = new ApiResponseDto();
@@ -83,6 +89,7 @@ public class UserAccountServiceImpl implements UserAccountService {
     }
 
     @Override
+    @Transactional
     public ApiResponseDto login(UserAccountDto userAccount) {
         ApiResponseDto apiResponseDto = new ApiResponseDto();
         if (userAccount == null) {
@@ -130,12 +137,57 @@ public class UserAccountServiceImpl implements UserAccountService {
     }
 
     @Override
+    @Transactional
+    public ApiResponseDto logout(HttpServletRequest request) {
+        ApiResponseDto apiResponseDto = new ApiResponseDto();
+        try {
+            UserAccountDto userContext = UserContext.getCurrentUser();
+            Long id = userContext.getId();
+            UserAccount userAccount = repository.findById(id).orElse(null);
+            if (userAccount != null) {
+                userAccount.setAccessToken(null);
+                repository.save(userAccount);
+                apiResponseDto.setStatusCode("SUCCESS");
+                apiResponseDto.setMessage("Đăng xuất thành công");
+            } else {
+                apiResponseDto.setStatusCode("FAIL");
+                apiResponseDto.setMessage("Người dùng không tồn tại");
+            }
+        } catch (Exception e) {
+            apiResponseDto.setStatusCode("ERROR");
+            apiResponseDto.setMessage("Lỗi hệ thống");
+        }
+        return apiResponseDto;
+    }
+
+    @Override
     public UserAccountDto loadUserById(Long id) {
         UserAccount userAccount = repository.findById(id).orElse(null);
         if (userAccount != null) {
             return mapper.toDto(userAccount);
         }
         return null;
+    }
+
+    @Override
+    public ApiResponseDto getProfile(HttpServletRequest request) {
+        ApiResponseDto apiResponseDto = new ApiResponseDto();
+        try {
+            // Get some information to identify user from access token}
+            UserAccountDto userContext = UserContext.getCurrentUser();
+            Long id = userContext.getId();
+
+            UserAccount userAccount = repository.findById(id).orElse(null);
+            UserAccountDto userAccountDto = mapper.toDto(userAccount);
+            userAccountDto.setAccessToken(null);
+            apiResponseDto.setStatusCode("200");
+            apiResponseDto.setMessage("SUCCESS");
+            apiResponseDto.setData(userAccountDto);
+        } catch (Exception e) {
+            apiResponseDto.setStatusCode("500");
+            apiResponseDto.setMessage("Internal Server Error");
+        }
+        return apiResponseDto;
     }
 
     // Hàm kiểm tra định dạng email

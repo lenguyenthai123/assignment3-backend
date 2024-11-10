@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,8 +26,9 @@ public class UserAccountController {
     public ResponseEntity<?> register(@RequestBody UserAccountDto userAccount, HttpServletRequest request) {
         ApiResponseDto responseDto = userAccountService.register(userAccount);
 
-        if(responseDto.getStatusCode().equals("SUCCESS")) return new ResponseEntity<>(responseDto, HttpStatus.CREATED);
-        if(responseDto.getStatusCode().equals("FAIL")) return new ResponseEntity<>(responseDto, HttpStatus.BAD_REQUEST);
+        if (responseDto.getStatusCode().equals("SUCCESS")) return new ResponseEntity<>(responseDto, HttpStatus.CREATED);
+        if (responseDto.getStatusCode().equals("FAIL"))
+            return new ResponseEntity<>(responseDto, HttpStatus.BAD_REQUEST);
         return new ResponseEntity<>(responseDto, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
@@ -34,8 +36,26 @@ public class UserAccountController {
     @PostMapping(value = root + "/login")
     public ResponseEntity<?> login(@RequestBody UserAccountDto userAccount, HttpServletRequest request) {
         ApiResponseDto responseDto = userAccountService.login(userAccount);
-        if(responseDto.getStatusCode().equals("SUCCESS")) return new ResponseEntity<>(responseDto, HttpStatus.OK);
-        if(responseDto.getStatusCode().equals("FAIL")) return new ResponseEntity<>(responseDto, HttpStatus.UNAUTHORIZED);
+        if (responseDto.getStatusCode().equals("SUCCESS")) return new ResponseEntity<>(responseDto, HttpStatus.OK);
+        if (responseDto.getStatusCode().equals("FAIL"))
+            return new ResponseEntity<>(responseDto, HttpStatus.UNAUTHORIZED);
         return new ResponseEntity<>(responseDto, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ApiOperation("Logout user")
+    @PostMapping(value = root + "/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+        ApiResponseDto responseDto = userAccountService.logout(request);
+        if (responseDto.getStatusCode().equals("SUCCESS")) return new ResponseEntity<>(responseDto, HttpStatus.OK);
+        if (responseDto.getStatusCode().equals("FAIL"))
+            return new ResponseEntity<>(responseDto, HttpStatus.UNAUTHORIZED);
+        return new ResponseEntity<>(responseDto, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ApiOperation("Get some data from profile page")
+    @GetMapping(value = root + "/profile")
+    public ResponseEntity<?> profile(HttpServletRequest request) {
+        ApiResponseDto responseDto = userAccountService.getProfile(request);
+        return ResponseEntity.ok(responseDto);
     }
 }

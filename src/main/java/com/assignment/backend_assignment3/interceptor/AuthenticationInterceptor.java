@@ -14,6 +14,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
+import java.util.Objects;
+
 @Component
 @Log
 public class AuthenticationInterceptor implements HandlerInterceptor {
@@ -29,34 +31,40 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        String errMessage = "";
         try {
             // Lấy jwt từ request
             String jwt = getJwtFromRequest(request);
-
-            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
+            int status = tokenProvider.validateToken(jwt);
+            if (StringUtils.hasText(jwt) && status == 1) {
                 // Lấy id user từ chuỗi jwt
                 Long userId = tokenProvider.getUserIdFromJWT(jwt);
                 // Lấy thông tin người dùng từ id
                 UserAccountDto foundUser = service.loadUserById(userId);
 
-                if (foundUser != null) {
+                if (foundUser != null && Objects.equals(foundUser.getAccessToken(), jwt)) {
                     // Nếu người dùng hợp lệ, set thông tin cho Security Context
                     UserContext.setCurrentUser(foundUser);
                     return true;
                 }
+                if (foundUser != null && !Objects.equals(foundUser.getAccessToken(), jwt)) {
+                    errMessage = "Phiên đăng nhập đã hết hạn";
+                }
             }
+            errMessage = status != 2 ? "Bạn không có quyền truy cập vào tài nguyên này" : "Phiên đăng nhập đã hết hạn";
         } catch (Exception ex) {
             log.info("failed on set user authentication");
-
+            errMessage = "Lỗi xác thực người dùng";
         }
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.getWriter().write("Bạn không có quyền truy cập vào tài nguyên này");
+        response.setCharacterEncoding("UTF-8");  // Đặt mã hóa ký tự
+        response.setContentType("text/html; charset=UTF-8");  // Đặt nội dung là HTML với UTF-8
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);  // Đặt mã trạng thái 401
+        response.getWriter().write(errMessage);  // Ghi nội dung với các ký tự có dấu
         return false;
     }
 
     @Override
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
-        // Implementation details
         UserContext.clear();
         return;
     }
