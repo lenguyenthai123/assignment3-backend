@@ -1,55 +1,72 @@
 package com.assignment.backend_assignment3.interceptor;
 
-import com.assignment.backend_assignment3.repository.UserAccountRepository;
-import com.assignment.backend_assignment3.utils.JwtUtils;
+import com.assignment.backend_assignment3.config.JwtTokenProvider;
+import com.assignment.backend_assignment3.dto.UserAccountDto;
+import com.assignment.backend_assignment3.service.UserAccountService;
+import com.assignment.backend_assignment3.service.mapstruct.UserAccountMapper;
+import com.assignment.backend_assignment3.utils.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.java.Log;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.ModelAndView;
 
 @Component
+@Log
 public class AuthenticationInterceptor implements HandlerInterceptor {
 
     @Autowired
-    private JwtUtils jwtUtils;
-
-    public AuthenticationInterceptor(JwtUtils jwtUtils) {
-        this.jwtUtils = jwtUtils;
-    }
+    private JwtTokenProvider tokenProvider;
 
     @Autowired
-    private UserAccountRepository repository;
+    private UserAccountService service;
 
+    @Autowired
+    private UserAccountMapper mapper;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        // Lấy Authorization header
-        String authHeader = request.getHeader("Authorization");
+        try {
+            // Lấy jwt từ request
+            String jwt = getJwtFromRequest(request);
 
-        // Kiểm tra xem header có chứa Bearer token hay không
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7); // Lấy token sau "Bearer "
+            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
+                // Lấy id user từ chuỗi jwt
+                Long userId = tokenProvider.getUserIdFromJWT(jwt);
+                // Lấy thông tin người dùng từ id
+                UserAccountDto foundUser = service.loadUserById(userId);
 
-            try {
-                // Xác thực token
-                String username = jwtUtils.isTokenPresentInDb(token);
-                if (username != null) {
-                    // Nếu token hợp lệ, tiếp tục xử lý yêu cầu
-                    request.setAttribute("username", username);  // Lưu thông tin username vào request
+                if (foundUser != null) {
+                    // Nếu người dùng hợp lệ, set thông tin cho Security Context
+                    UserContext.setCurrentUser(foundUser);
                     return true;
                 }
-            } catch (Exception e) {
-                // Trường hợp token không hợp lệ hoặc hết hạn
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("Unauthorized: Invalid or expired token");
-                return false;
             }
-        }
+        } catch (Exception ex) {
+            log.info("failed on set user authentication");
 
-        // Nếu không có header Authorization hoặc token không hợp lệ, trả về lỗi 401
+        }
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.getWriter().write("Unauthorized: Missing or invalid Authorization header");
+        response.getWriter().write("Bạn không có quyền truy cập vào tài nguyên này");
         return false;
+    }
+
+    @Override
+    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
+        // Implementation details
+        UserContext.clear();
+        return;
+    }
+
+    private String getJwtFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        // Kiểm tra xem header Authorization có chứa thông tin jwt không
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
     }
 }

@@ -1,15 +1,14 @@
 package com.assignment.backend_assignment3.service.impl;
 
+import com.assignment.backend_assignment3.config.JwtTokenProvider;
 import com.assignment.backend_assignment3.domain.UserAccount;
 import com.assignment.backend_assignment3.dto.ApiResponseDto;
 import com.assignment.backend_assignment3.dto.UserAccountDto;
 import com.assignment.backend_assignment3.repository.UserAccountRepository;
 import com.assignment.backend_assignment3.service.UserAccountService;
 import com.assignment.backend_assignment3.service.mapstruct.UserAccountMapper;
-import com.assignment.backend_assignment3.utils.JwtUtils;
 import com.assignment.backend_assignment3.utils.PasswordUtils;
-import lombok.RequiredArgsConstructor;
-import org.joda.time.LocalDate;
+import io.micrometer.common.util.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -26,20 +25,37 @@ public class UserAccountServiceImpl implements UserAccountService {
     private UserAccountMapper mapper;
 
     @Autowired
-    private JwtUtils jwtUtils;
+    private JwtTokenProvider jwtTokenProvider;
 
     @Override
     public ApiResponseDto register(UserAccountDto userAccount) {
 
         ApiResponseDto apiResponseDto = new ApiResponseDto();
+        // Kiểm tra nếu dữ liệu người dùng null
         if (userAccount == null) {
             apiResponseDto.setStatusCode("FAIL");
             apiResponseDto.setMessage("Dữ liệu không hợp lệ");
             return apiResponseDto;
         }
-        if (userAccount.getEmail() == null || userAccount.getEmail().isEmpty() || userAccount.getPassword() == null || userAccount.getPassword().isEmpty()) {
+
+        // Kiểm tra nếu email hoặc mật khẩu rỗng
+        if (StringUtils.isBlank(userAccount.getEmail()) || StringUtils.isBlank(userAccount.getPassword())) {
             apiResponseDto.setStatusCode("FAIL");
-            apiResponseDto.setMessage("Email hoặc mật khẩu không hợp lệ");
+            apiResponseDto.setMessage("Email hoặc mật khẩu không được trống");
+            return apiResponseDto;
+        }
+
+        // Kiểm tra nếu mật khẩu có độ dài dưới 6 ký tự
+        if (userAccount.getPassword().length() < 6) {
+            apiResponseDto.setStatusCode("FAIL");
+            apiResponseDto.setMessage("Mật khẩu phải có ít nhất 6 ký tự");
+            return apiResponseDto;
+        }
+
+        // Kiểm tra định dạng email
+        if (!isValidEmail(userAccount.getEmail())) {
+            apiResponseDto.setStatusCode("FAIL");
+            apiResponseDto.setMessage("Email không hợp lệ");
             return apiResponseDto;
         }
 
@@ -89,11 +105,11 @@ public class UserAccountServiceImpl implements UserAccountService {
                     apiResponseDto.setStatusCode("SUCCESS");
                     apiResponseDto.setMessage("Đăng nhập thành công");
 
-                    String accessToken = jwtUtils.generateUUIDToken();
+                    String accessToken = jwtTokenProvider.generateToken(anotherUserAccount);
                     anotherUserAccount.setAccessToken(accessToken);
                     repository.save(anotherUserAccount);
-
                     apiResponseDto.setData("Bearer " + accessToken);
+
                 } else {
                     apiResponseDto.setStatusCode("FAIL");
                     apiResponseDto.setMessage("Mật khẩu không đúng");
@@ -113,5 +129,22 @@ public class UserAccountServiceImpl implements UserAccountService {
 
     }
 
+    @Override
+    public UserAccountDto loadUserById(Long id) {
+        UserAccount userAccount = repository.findById(id).orElse(null);
+        if (userAccount != null) {
+            return mapper.toDto(userAccount);
+        }
+        return null;
+    }
+
+    // Hàm kiểm tra định dạng email
+    private boolean isValidEmail(String email) {
+        // Biểu thức chính quy để kiểm tra email hợp lệ
+        String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
+
+        // Kiểm tra email với biểu thức chính quy
+        return email.matches(emailRegex);
+    }
 
 }

@@ -12,6 +12,7 @@ public interface UserAccountMapper {
     UserAccountMapper INSTANCE = Mappers.getMapper(UserAccountMapper.class);
 
     // Mapping từ UserAccount sang UserAccountDTO
+    @Mapping(target = "password", ignore = true)
     UserAccountDto toDto(UserAccount userAccount);
 
     // Mapping từ UserAccountDTO sang UserAccount
