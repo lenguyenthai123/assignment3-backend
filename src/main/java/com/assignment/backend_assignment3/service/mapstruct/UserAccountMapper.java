@@ -13,6 +13,7 @@ public interface UserAccountMapper {
 
     // Mapping từ UserAccount sang UserAccountDTO
     @Mapping(target = "password", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
     UserAccountDto toDto(UserAccount userAccount);
 
     // Mapping từ UserAccountDTO sang UserAccount

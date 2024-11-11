@@ -9,6 +9,8 @@ public interface UserAccountService {
 
     ApiResponseDto login(UserAccountDto userAccount);
 
+    ApiResponseDto getInfo(HttpServletRequest request);
+
     ApiResponseDto logout(HttpServletRequest request);
 
     UserAccountDto loadUserById(Long id);

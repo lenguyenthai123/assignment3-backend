@@ -42,6 +42,16 @@ public class UserAccountController {
         return new ResponseEntity<>(responseDto, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @ApiOperation("Get user by token")
+    @GetMapping(value = root + "/auth/info")
+    public ResponseEntity<?> getUser( HttpServletRequest request) {
+        ApiResponseDto responseDto = userAccountService.getInfo(request);
+        if (responseDto.getStatusCode().equals("SUCCESS")) return new ResponseEntity<>(responseDto, HttpStatus.OK);
+        if (responseDto.getStatusCode().equals("FAIL"))
+            return new ResponseEntity<>(responseDto, HttpStatus.UNAUTHORIZED);
+        return new ResponseEntity<>(responseDto, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     @ApiOperation("Logout user")
     @PostMapping(value = root + "/logout")
     public ResponseEntity<?> logout(HttpServletRequest request) {
@@ -51,6 +61,9 @@ public class UserAccountController {
             return new ResponseEntity<>(responseDto, HttpStatus.UNAUTHORIZED);
         return new ResponseEntity<>(responseDto, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+
+
 
     @ApiOperation("Get some data from profile page")
     @GetMapping(value = root + "/profile")

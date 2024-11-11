@@ -3,6 +3,7 @@ package com.assignment.backend_assignment3.service.impl;
 import com.assignment.backend_assignment3.config.JwtTokenProvider;
 import com.assignment.backend_assignment3.domain.UserAccount;
 import com.assignment.backend_assignment3.dto.ApiResponseDto;
+import com.assignment.backend_assignment3.dto.LoginDataDto;
 import com.assignment.backend_assignment3.dto.UserAccountDto;
 import com.assignment.backend_assignment3.repository.UserAccountRepository;
 import com.assignment.backend_assignment3.service.UserAccountService;
@@ -115,16 +116,20 @@ public class UserAccountServiceImpl implements UserAccountService {
                     String accessToken = jwtTokenProvider.generateToken(anotherUserAccount);
                     anotherUserAccount.setAccessToken(accessToken);
                     repository.save(anotherUserAccount);
-                    apiResponseDto.setData("Bearer " + accessToken);
+
+                    LoginDataDto loginDataDto = new LoginDataDto();
+                    loginDataDto.setToken(accessToken);
+                    loginDataDto.setUser(mapper.toDto(anotherUserAccount));
+                    apiResponseDto.setData(loginDataDto);
 
                 } else {
                     apiResponseDto.setStatusCode("FAIL");
-                    apiResponseDto.setMessage("Mật khẩu không đúng");
+                    apiResponseDto.setMessage("Email hoặc mật khẩu không đúng");
                     apiResponseDto.setData(null);
                 }
             } else {
                 apiResponseDto.setStatusCode("FAIL");
-                apiResponseDto.setMessage("Email không tồn tại");
+                apiResponseDto.setMessage("Email hoặc mật khẩu không đúng");
                 apiResponseDto.setData(null);
             }
         } catch (Exception e) {
@@ -134,6 +139,21 @@ public class UserAccountServiceImpl implements UserAccountService {
         }
         return apiResponseDto;
 
+    }
+
+    @Override
+    public ApiResponseDto getInfo(HttpServletRequest request) {
+        UserAccountDto userContext = UserContext.getCurrentUser();
+        ApiResponseDto apiResponseDto = new ApiResponseDto();
+        if (userContext != null) {
+            apiResponseDto.setStatusCode("SUCCESS");
+            apiResponseDto.setMessage("Đã xác thực");
+            apiResponseDto.setData(userContext);
+        } else {
+            apiResponseDto.setStatusCode("FAIL");
+            apiResponseDto.setMessage("Chưa xác thực");
+        }
+        return apiResponseDto;
     }
 
     @Override
